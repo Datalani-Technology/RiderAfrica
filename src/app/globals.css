@@ -1,26 +1,134 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ra-blue: #0073FF;
+  --ra-blue-dark: #0055CC;
+  --ra-blue-light: #4DA6FF;
+  --ra-blue-glow: rgba(0, 115, 255, 0.35);
+  --ra-black: #090E1A;
+  --ra-dark: #0D1526;
+  --ra-gray: #6B7280;
+  --ra-light: #F4F7FF;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: #ffffff;
+  --color-foreground: #090E1A;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #ffffff;
+  color: var(--ra-black);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  overflow-x: hidden;
+}
+
+/* ── Gradient text ──────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, #0073FF, #00C3FF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-light {
+  background: linear-gradient(135deg, #FFFFFF, #A8D4FF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Service card ───────────────────────────────── */
+.service-card {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.3s ease;
+}
+.service-card:hover {
+  transform: translateY(-10px) scale(1.02);
+  box-shadow: 0 24px 48px rgba(0, 115, 255, 0.18);
+}
+
+/* ── Floating animation ─────────────────────────── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33%       { transform: translateY(-14px) rotate(1.5deg); }
+  66%       { transform: translateY(-6px) rotate(-1deg); }
+}
+.animate-float { animation: float 5s ease-in-out infinite; }
+
+@keyframes float2 {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50%       { transform: translateY(-20px) rotate(-2deg); }
+}
+.animate-float2 { animation: float2 7s ease-in-out infinite; }
+
+/* ── Blob pulse ─────────────────────────────────── */
+@keyframes blob-pulse {
+  0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: scale(1); }
+  33%       { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; transform: scale(1.05); }
+  66%       { border-radius: 70% 30% 50% 50% / 30% 70% 60% 40%; transform: scale(0.97); }
+}
+.animate-blob { animation: blob-pulse 8s ease-in-out infinite; }
+
+/* ── Spin slow ──────────────────────────────────── */
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+.animate-spin-slow { animation: spin-slow 20s linear infinite; }
+
+/* ── Shimmer ────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* ── Page entrance ──────────────────────────────── */
+.page-enter {
+  animation: fadeInUp 0.45s ease forwards;
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Glow button ────────────────────────────────── */
+.btn-glow {
+  box-shadow: 0 0 0 0 rgba(0, 115, 255, 0.6);
+  animation: pulse-glow 2.5s ease-in-out infinite;
+}
+@keyframes pulse-glow {
+  0%   { box-shadow: 0 0 0 0 rgba(0, 115, 255, 0.6); }
+  60%  { box-shadow: 0 0 0 18px rgba(0, 115, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 115, 255, 0); }
+}
+
+/* ── Scrollbar ──────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: #0073FF; border-radius: 3px; }
+
+/* ── Mobile performance ─────────────────────────── */
+button, a { touch-action: manipulation; }
+
+/* Disable heavy hover transforms on touch screens */
+@media (hover: none) {
+  .service-card:hover {
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+/* Respect reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .animate-float, .animate-float2, .animate-blob,
+  .animate-spin-slow, .animate-shimmer, .btn-glow,
+  .page-enter { animation: none; }
+  html { scroll-behavior: auto; }
 }
