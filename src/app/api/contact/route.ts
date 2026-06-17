@@ -3,14 +3,39 @@ import nodemailer from "nodemailer";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { emailTemplate } from "@/lib/email-template";
+import { jwtVerify } from "jose";
+
+function captchaSecret() {
+  return new TextEncoder().encode(
+    process.env.ADMIN_JWT_SECRET || "rider-africa-captcha-secret"
+  );
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, email, phone, subject, message } = body;
+    const { name, email, phone, subject, message, captchaToken, captchaAnswer, _trap } = body;
+
+    // Honeypot — bots fill hidden fields
+    if (_trap) {
+      return Response.json({ success: true }); // silent reject
+    }
 
     if (!name || !email || !subject || !message) {
       return Response.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    // CAPTCHA verification
+    if (!captchaToken || captchaAnswer === undefined || captchaAnswer === "") {
+      return Response.json({ error: "Please complete the human verification." }, { status: 400 });
+    }
+    try {
+      const { payload } = await jwtVerify(captchaToken, captchaSecret());
+      if (Number(payload.answer) !== Number(captchaAnswer)) {
+        return Response.json({ error: "Incorrect answer — please try again." }, { status: 400 });
+      }
+    } catch {
+      return Response.json({ error: "Verification expired. Please refresh the question and try again." }, { status: 400 });
     }
 
     const isDriverApp = subject === "Driver Partner Application";

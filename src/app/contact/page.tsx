@@ -1,8 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import AnimateOnScroll from "@/components/AnimateOnScroll";
 import PageHero from "@/components/PageHero";
-import { MapPin, Phone, Mail, CheckCircle2 } from "lucide-react";
+import { MapPin, Phone, Mail, CheckCircle2, RefreshCw, ShieldCheck } from "lucide-react";
 
 const contactItems = [
   {
@@ -52,6 +52,27 @@ export default function ContactPage() {
     message: "",
   });
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  // CAPTCHA state
+  const [captcha, setCaptcha] = useState<{ question: string; token: string } | null>(null);
+  const [captchaAnswer, setCaptchaAnswer] = useState("");
+  const [captchaLoading, setCaptchaLoading] = useState(false);
+
+  const loadCaptcha = useCallback(async () => {
+    setCaptchaLoading(true);
+    setCaptchaAnswer("");
+    try {
+      const res = await fetch("/api/captcha");
+      const data = await res.json();
+      setCaptcha(data);
+    } catch {
+      setCaptcha(null);
+    }
+    setCaptchaLoading(false);
+  }, []);
+
+  useEffect(() => { loadCaptcha(); }, [loadCaptcha]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -60,19 +81,32 @@ export default function ContactPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus("sending");
+    setErrorMsg("");
     try {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          captchaToken: captcha?.token,
+          captchaAnswer,
+        }),
       });
       if (res.ok) {
         setStatus("sent");
         setForm({ name: "", email: "", phone: "", subject: "", message: "" });
+        setCaptchaAnswer("");
       } else {
+        const data = await res.json();
+        setErrorMsg(data.error || "Something went wrong. Please try again.");
         setStatus("error");
+        // If CAPTCHA-related error, refresh the question
+        if (data.error?.toLowerCase().includes("verif") || data.error?.toLowerCase().includes("answer")) {
+          loadCaptcha();
+        }
       }
     } catch {
+      setErrorMsg("Something went wrong. Please try again.");
       setStatus("error");
     }
   };
@@ -143,7 +177,7 @@ export default function ContactPage() {
                   Thank you for contacting Rider Africa. We will get back to you within 24 hours.
                 </p>
                 <button
-                  onClick={() => setStatus("idle")}
+                  onClick={() => { setStatus("idle"); loadCaptcha(); }}
                   className="mt-6 text-green-700 underline text-sm"
                 >
                   Send another message
@@ -221,13 +255,70 @@ export default function ContactPage() {
                   />
                 </div>
 
+                {/* ── Human Verification ── */}
+                <div className="bg-[#F0F6FF] border border-[#0073FF]/20 rounded-2xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <ShieldCheck className="w-4 h-4 text-[#0073FF]" strokeWidth={1.75} />
+                    <span className="text-sm font-semibold text-gray-700">Human Verification</span>
+                  </div>
+
+                  {captchaLoading ? (
+                    <div className="flex items-center gap-2 text-gray-400 text-sm py-2">
+                      <svg className="w-4 h-4 animate-spin text-[#0073FF]" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                      </svg>
+                      Loading question…
+                    </div>
+                  ) : captcha ? (
+                    <div className="flex items-center gap-3">
+                      <div className="bg-white border border-[#0073FF]/25 rounded-xl px-4 py-2.5 flex-1">
+                        <p className="text-[#0073FF] font-black text-lg tracking-wide">{captcha.question}</p>
+                      </div>
+                      <input
+                        type="number"
+                        required
+                        value={captchaAnswer}
+                        onChange={e => setCaptchaAnswer(e.target.value)}
+                        placeholder="?"
+                        className="w-20 text-center border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 text-lg font-bold focus:outline-none focus:border-[#0073FF] focus:ring-2 focus:ring-[#0073FF]/10 transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={loadCaptcha}
+                        title="New question"
+                        className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-200 text-gray-400 hover:text-[#0073FF] hover:border-[#0073FF]/30 transition-all shrink-0"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={loadCaptcha}
+                      className="text-sm text-[#0073FF] underline">
+                      Load verification question
+                    </button>
+                  )}
+                </div>
+
+                {/* Honeypot — hidden, bots fill this in */}
+                <input
+                  type="text"
+                  name="_trap"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  aria-hidden="true"
+                  style={{ display: "none" }}
+                />
+
                 {status === "error" && (
-                  <p className="text-red-600 text-sm">Something went wrong. Please try again or email us directly.</p>
+                  <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                    {errorMsg}
+                  </p>
                 )}
 
                 <button
                   type="submit"
-                  disabled={status === "sending"}
+                  disabled={status === "sending" || !captcha}
                   className="w-full bg-[#0073FF] hover:bg-[#0055CC] disabled:opacity-60 text-white font-bold py-4 rounded-xl transition-colors btn-glow"
                 >
                   {status === "sending" ? "Sending…" : "Send Message"}
